@@ -72,7 +72,12 @@
   </div>
 
   <script>
-    const API_BASE_URL = "https://wizybot-backend.vercel.app";
+    const API_BASE_URL =
+      (typeof window !== "undefined" && window.API_BASE_URL) ||
+      (typeof process !== "undefined" &&
+        process.env &&
+        process.env.API_BASE_URL) ||
+      "https://wizybot-backend.vercel.app";
 
     const inputEl = document.getElementById("user-input");
     const sendBtn = document.getElementById("send-btn");
@@ -124,7 +129,7 @@
       setResponse("...");
 
       try {
-        const res = await fetch(API_BASE_URL + "/api/chat", {
+        const res = await fetch(API_BASE_URL + "/chat", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
