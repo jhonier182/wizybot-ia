@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Wizybot IA – Chat Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <div class="title">Wizybot IA · Chat Demo</div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="panel">
+        <div class="panel-inner">
+          <h2>1. Ask the chatbot</h2>
+          <p>
+            Click on a preset question or write your own message.
+          </p>
+
+          <div class="chips" id="preset-questions">
+            <button class="chip" data-text="I am looking for a phone">
+              I am looking for a phone
+            </button>
+            <button class="chip" data-text="I am looking for a present for my dad">
+              I am looking for a present for my dad
+            </button>
+            <button class="chip" data-text="How much does a watch costs?">
+              How much does a watch costs?
+            </button>
+            <button class="chip" data-text="What is the price of the watch in Euros">
+              What is the price of the watch in Euros
+            </button>
+            <button class="chip" data-text="How many Canadian Dollars are 350 Euros">
+              How many Canadian Dollars are 350 Euros
+            </button>
+          </div>
+
+          <div class="field-label">Your message</div>
+          <div class="input-row">
+            <input
+              id="user-input"
+              type="text"
+              placeholder="Type your question here..."
+              autocomplete="off"
+            />
+            <button id="send-btn" class="btn-primary">
+              <span>Send</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-inner">
+          <h2>2. Chatbot answer</h2>
+          <div id="status" class="status"></div>
+          <div id="response-box" class="response-box">
+            <div class="response-placeholder">
+              The answer will appear here.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE_URL = "http://localhost:3000";
+
+    const inputEl = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const statusEl = document.getElementById("status");
+    const responseBox = document.getElementById("response-box");
+    const chipsContainer = document.getElementById("preset-questions");
+
+    function setLoading(isLoading) {
+      sendBtn.disabled = isLoading;
+      if (isLoading) {
+        statusEl.textContent = "Calling /chat endpoint...";
+      } else {
+        statusEl.textContent = "";
+      }
+    }
+
+    function setError(message) {
+      statusEl.textContent = message;
+      statusEl.classList.add("error");
+    }
+
+    function clearError() {
+      statusEl.classList.remove("error");
+      statusEl.textContent = "";
+    }
+
+    function setResponse(text) {
+      if (!text || text === "...") {
+        responseBox.innerHTML = "<div class=\"response-placeholder\">The answer will appear here.</div>";
+        return;
+      }
+      const rawHtml = window.marked.parse(text, { breaks: true });
+      const safeHtml = window.DOMPurify.sanitize(rawHtml, { ADD_ATTR: ["target", "rel"] });
+      responseBox.innerHTML = safeHtml;
+      responseBox.querySelectorAll("a").forEach(function (a) {
+        a.setAttribute("target", "_blank");
+        a.setAttribute("rel", "noopener noreferrer");
+      });
+    }
+
+    async function sendMessage() {
+      const message = (inputEl.value || "").trim();
+      if (!message) {
+        setError("Please type a message first.");
+        return;
+      }
+      clearError();
+      setLoading(true);
+      setResponse("...");
+
+      try {
+        const res = await fetch(API_BASE_URL + "/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ message }),
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          setError("Request failed: " + res.status + " - " + text);
+          setResponse("No answer due to error.");
+          return;
+        }
+
+        const data = await res.json();
+        const answer = data.answer ?? JSON.stringify(data, null, 2);
+        setResponse(answer);
+      } catch (err) {
+        console.error(err);
+        setError("Network error. Check API URL.");
+        setResponse("No answer due to network error.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    chipsContainer.addEventListener("click", (event) => {
+      const target = event.target;
+      if (target.classList.contains("chip")) {
+        const text = target.getAttribute("data-text") || "";
+        inputEl.value = text;
+        inputEl.focus();
+      }
+    });
+
+    sendBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      sendMessage();
+    });
+
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  </script>
+</body>
+</html>
+
