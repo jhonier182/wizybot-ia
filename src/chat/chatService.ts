@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { CurrencyService } from 'src/currency/currency.service';
 import { ProductsService } from 'src/products/products.service';
 
 @Injectable()
@@ -11,7 +12,8 @@ export class ChatService {
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly productsService: ProductsService   
+        private readonly productsService: ProductsService,
+        private readonly currencyService: CurrencyService
     ) {
         this.openaiApiKey = this.configService.get<string>('OPENAI_API_KEY') ?? '';
         this.openaiModel = this.configService.get<string>('OPENAI_MODEL') ?? 'gpt-4.1-mini';
@@ -136,6 +138,19 @@ export class ChatService {
             variants: p.variants,
             createDate: p.createDate,
            }));
+        }
+        if (toolName === 'convertCurrencies') {
+            const { amount, fromCurrency, toCurrency } = args;
+            const convertedAmount = await this.currencyService.convert(
+                amount, 
+                fromCurrency, 
+                toCurrency);
+            return {
+                fromCurrency,
+                toCurrency,
+                originalAmount: amount,
+                convertedAmount,
+            };
         }
         throw new Error(`Unknown tool: ${toolName}`);
     }
