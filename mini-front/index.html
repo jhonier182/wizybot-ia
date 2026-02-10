@@ -78,9 +78,15 @@
         (typeof process !== "undefined" &&
           process.env &&
           process.env.API_BASE_URL) ||
-        "https://wizybot-backend.vercel.app";
-      base = (base || "").trim().replace(/\/api\/?$/, "");
-      window.__CHAT_URL = base ? base + "/chat" : "https://wizybot-backend.vercel.app/chat";
+        "";
+      if (!base && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+        base = "http://localhost:3000";
+      }
+      if (!base) {
+        base = "https://wizybot-backend.vercel.app";
+      }
+      base = (base || "").trim().replace(/\/api\/?$/, "").replace(/\/$/, "");
+      window.__CHAT_URL = base ? base + "/chat" : "/chat";
     })();
 
     const inputEl = document.getElementById("user-input");

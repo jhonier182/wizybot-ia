@@ -89,27 +89,62 @@ export class ProductsService {
 
     /**
      * Search for products related to the user's query.
+     * Uses word-based matching with stopwords and synonym expansion.
      * Returns at most 2 products sorted by relevance.
      */
     search(query: string): Product[] {
-        const q = query.toLowerCase();
+        const stopWords = new Set([
+            'i', 'am', 'is', 'are', 'a', 'an', 'the', 'for', 'my', 'your', 'in', 'on', 'at',
+            'looking', 'want', 'need', 'what', 'how', 'much', 'does', 'do', 'can', 'me', 'it', 'to',
+        ]);
+        const queryExpansion: Record<string, string[]> = {
+            dad: ['men', 'mens', "men's", 'man', 'boys', 'father'],
+            father: ['men', 'mens', "men's", 'man', 'boys', 'dad'],
+            present: ['gift'],
+            gift: ['present'],
+            watch: ['reloj', 'watch'],
+            phone: ['iphone', 'celulares', 'phone'],
+        };
+
+        const words = query
+            .toLowerCase()
+            .replace(/[^\w\s']/g, ' ')
+            .split(/\s+/)
+            .filter((w) => w.length > 1 && !stopWords.has(w));
+
+        const searchTerms = new Set<string>(words);
+        words.forEach((w) => {
+            (queryExpansion[w] || []).forEach((t) => searchTerms.add(t));
+        });
+        if (searchTerms.size === 0) {
+            return this.products.slice(0, 2);
+        }
+
+        const wordBoundaryMatch = (text: string, term: string): boolean => {
+            const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return new RegExp('\\b' + escaped + '\\b', 'i').test(text);
+        };
 
         const scored = this.products.map((p) => {
             const title = p.displayTitle.toLowerCase();
             const desc = p.embeddingText.toLowerCase();
+            const type = (p.productType || '').toLowerCase();
 
             let score = 0;
-            if (title.includes(q)) score += 2;
-            if (desc.includes(q)) score += 1;
-
-            // Optionally, you can add more rules (by productType, etc.)
+            for (const term of searchTerms) {
+                if (wordBoundaryMatch(title, term)) score += 2;
+                else if (wordBoundaryMatch(desc, term) || wordBoundaryMatch(type, term)) score += 1;
+            }
             return { product: p, score };
         });
 
-        return scored
-            .filter((s) => s.score > 0)         // only products somewhat related
-            .sort((a, b) => b.score - a.score)  // higher score first
-            .slice(0, 2)                        // at most 2
+        const filtered = scored.filter((s) => s.score > 0);
+        if (filtered.length === 0) {
+            return this.products.slice(0, 2);
+        }
+        return filtered
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 2)
             .map((s) => s.product);
     }
 }
