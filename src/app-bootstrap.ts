@@ -8,18 +8,18 @@ import type { INestApplication } from '@nestjs/common';
 export async function createApp(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
 
-  const corsOrigins = [
+  const corsOrigins: (string | RegExp)[] = [
     'http://localhost:3000',
     'http://127.0.0.1:5500',
     'http://localhost:5500',
     'https://wizybot-ia-iibp.vercel.app',
-    'https://wizybot-backend.vercel.app/chat',
     /\.vercel\.app$/,
   ];
   app.enableCors({
     origin: corsOrigins,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type,Authorization',
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: false,
   });
 
   const config = new DocumentBuilder()
