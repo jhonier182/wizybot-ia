@@ -1,8 +1,21 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { CurrencyService } from 'src/currency/currency.service';
 import { ProductsService } from 'src/products/products.service';
+import {
+    OpenAIChatCompletion,
+    OpenAIChatMessage,
+    OpenAIToolCall,
+} from './openai.types';
+import {
+    ConvertCurrenciesArgs,
+    ConvertCurrenciesResult,
+    SearchProductsArgs,
+    SearchProductsResultItem,
+    ToolResult,
+} from './chat-tools.types';
 
 @Injectable()
 export class ChatService {
@@ -46,13 +59,31 @@ export class ChatService {
             const finalResponse = await this.callOpenAIWithToolResult(message, choice.message, toolCall, toolResult);
 
             return finalResponse.choices[0].message.content ?? 'No response from model';
-        } catch (error) {
-            console.error('Error in chatWithBot:', error);
+        } catch (error: unknown) {
+            if (axios.isAxiosError(error) && error.response) {
+                const status = error.response.status;
+
+                if (status === 429) {
+                    // Rate limit of OpenAI
+                    throw new ServiceUnavailableException(
+                        'The AI service is receiving too many requests. Please try again later.',
+                    );
+                }
+
+                if (status >= 400 && status < 500) {
+                    throw new BadRequestException('Invalid request to AI service');
+                }
+
+                
+                throw new ServiceUnavailableException('AI service is temporarily unavailable');
+            }
+
+            // Internal errors of your code
             throw new InternalServerErrorException('Error while processing chatbot request');
         }
     }
 
-    private async callOpenAIWithTools(userMessage: string) {
+    private async callOpenAIWithTools(userMessage: string): Promise<OpenAIChatCompletion> {
         const body = {
             model: this.openaiModel,
             messages: [
@@ -108,7 +139,7 @@ export class ChatService {
             tool_choice: 'auto',
         };
 
-        const response = await axios.post(this.openaiUrl, body, {
+        const response = await axios.post<OpenAIChatCompletion>(this.openaiUrl, body, {
             headers: {
                 Authorization: `Bearer ${this.openaiApiKey}`,
                 'Content-Type': 'application/json',
@@ -118,8 +149,8 @@ export class ChatService {
         return response.data;
     }
 
-    private async runTool(toolName: string, rawArgs: string): Promise<any> {
-        let args: any;
+    private async runTool(toolName: string, rawArgs: string): Promise<ToolResult> {
+        let args: unknown;
         try {
             args = JSON.parse(rawArgs);
         } catch (e) {
@@ -127,23 +158,24 @@ export class ChatService {
         }
 
         if (toolName === 'searchProducts') {
-           const products = this.productsService.search(args.query);
-           return products.map((p) => ({
-            title: p.displayTitle,
-            description: p.embeddingText,
-            url: p.url,
-            imageUrl: p.imageUrl,
-            discount: p.discount,
-            price: p.price,
-            variants: p.variants,
-            createDate: p.createDate,
-           }));
+            const { query } = args as SearchProductsArgs;
+            const products = this.productsService.search(query);
+            return products.map<SearchProductsResultItem>((p) => ({
+                title: p.displayTitle,
+                description: p.embeddingText,
+                url: p.url,
+                imageUrl: p.imageUrl,
+                discount: p.discount,
+                price: p.price,
+                variants: p.variants,
+                createDate: p.createDate,
+            }));
         }
         if (toolName === 'convertCurrencies') {
-            const { amount, fromCurrency, toCurrency } = args;
+            const { amount, fromCurrency, toCurrency } = args as ConvertCurrenciesArgs;
             const convertedAmount = await this.currencyService.convert(
-                amount, 
-                fromCurrency, 
+                amount,
+                fromCurrency,
                 toCurrency);
             return {
                 fromCurrency,
@@ -157,10 +189,10 @@ export class ChatService {
 
     private async callOpenAIWithToolResult(
         userMessage: string,
-        assistantMessageWithToolCall: any,
-        toolCall: any,
-        toolResult: any,
-    ) {
+        assistantMessageWithToolCall: OpenAIChatMessage,
+        toolCall: OpenAIToolCall,
+        toolResult: unknown,
+    ): Promise<OpenAIChatCompletion> {
         const toolMessage = {
             role: 'tool',
             tool_call_id: toolCall.id,
@@ -177,7 +209,7 @@ export class ChatService {
             ],
         };
 
-        const response = await axios.post(this.openaiUrl, body, {
+        const response = await axios.post<OpenAIChatCompletion>(this.openaiUrl, body, {
             headers: {
                 Authorization: `Bearer ${this.openaiApiKey}`,
                 'Content-Type': 'application/json',

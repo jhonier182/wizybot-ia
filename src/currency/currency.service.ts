@@ -18,10 +18,10 @@ export class CurrencyService {
   }
 
   /**
-   * Convierte una cantidad de una moneda a otra usando las tasas de Open Exchange Rates.
-   * amount: número a convertir
-   * from: código ISO de la moneda origen (ej. "USD", "EUR")
-   * to: código ISO de la moneda destino (ej. "EUR", "CAD")
+   * Converts an amount from one currency to another using Open Exchange Rates.
+   * amount: number to convert
+   * from: ISO code of the source currency (e.g., "USD", "EUR")
+   * to: ISO code of the target currency (e.g., "EUR", "CAD")
    */
   async convert(amount: number, from: string, to: string): Promise<number> {
     if (!amount || amount <= 0) {
@@ -35,8 +35,8 @@ export class CurrencyService {
       const response = await axios.get(this.apiUrl, {
         params: {
           app_id: this.apiKey,
-          // En los planes gratuitos normalmente la base es siempre USD,
-          // pero dejamos el parámetro por claridad.
+          // In free plans, the base is usually always USD,
+          // but we include the parameter for clarity.
           base: this.base,
         },
       });
@@ -50,22 +50,24 @@ export class CurrencyService {
         throw new BadRequestException(`Unsupported target currency: ${toCode}`);
       }
 
-      // Si base = USD:
+      // If base = USD:
       //   1 USD = rates["EUR"] EUR
       //   1 EUR = 1 / rates["EUR"] USD
       //   amount_from -> USD -> to
-      const amountInBase = amount / rates[fromCode];       // pasar de FROM a USD
-      const converted = amountInBase * rates[toCode];      // pasar de USD a TO
+      const amountInBase = amount / rates[fromCode];       // convert FROM to USD
+      const converted = amountInBase * rates[toCode];      // convert USD to TO
 
-      // Redondear a 2 decimales
+      // Round to 2 decimals
       return Number(converted.toFixed(2));
-    } catch (error: any) {
-      if (error.response) {
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response) {
         console.error('Open Exchange Rates error:', error.response.data);
-      } else {
+      } else if (error instanceof Error) {
         console.error('Open Exchange Rates error:', error.message);
+      } else {
+        console.error('Open Exchange Rates error:', error);
       }
-      // Si ya lanzaste BadRequestException arriba, Nest la respetará.
+      // If you already threw BadRequestException above, Nest will respect it.
       if (error instanceof BadRequestException) {
         throw error;
       }
