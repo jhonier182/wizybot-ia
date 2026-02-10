@@ -88,6 +88,10 @@ export class ChatService {
             model: this.openaiModel,
             messages: [
                 {
+                    role: 'system',
+                    content: 'You are a helpful shopping assistant. When presenting products, ALWAYS include ALL available information in this exact format:\n\n- **Title**: (product title)\n- **Description**: (brief description)\n- **Price**: (price in USD)\n- **Discount**: (if discount=1, say "On Sale/Discount", if discount=0, say "No discount")\n- **Variants**: (list all available colors, sizes, capacities, etc.)\n- **Link**: [View {product name}](url)\n- **Image**: ![{product name}](imageUrl)\n\nALWAYS show the discount status, variants, link, and image for every product. Be consistent.',
+                },
+                {
                     role: 'user',
                     content: userMessage,
                 },
@@ -203,6 +207,10 @@ export class ChatService {
         const body = {
             model: this.openaiModel,
             messages: [
+                {
+                    role: 'system',
+                    content: 'You are a helpful shopping assistant. When presenting products, ALWAYS include ALL available information in this exact format:\n\n- **Title**: (product title)\n- **Description**: (brief description)\n- **Price**: (price in USD)\n- **Discount**: (if discount=1, say "✅ On Sale/Discount", if discount=0, say "No discount")\n- **Variants**: (list all available colors, sizes, capacities, etc.)\n- **Link**: [View {product name}](url)\n- **Image**: ![{product name}](imageUrl)\n\nALWAYS show the discount status, variants, link, and image for every product. Be consistent.',
+                },
                 { role: 'user', content: userMessage },
                 assistantMessageWithToolCall,
                 toolMessage,
