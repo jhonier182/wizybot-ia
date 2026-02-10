@@ -30,4 +30,3 @@ export interface OpenAIChatCompletion {
   model: string;
   choices: OpenAIChatChoice[];
 }
-

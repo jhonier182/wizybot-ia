@@ -8,14 +8,14 @@ import {
     OpenAIChatCompletion,
     OpenAIChatMessage,
     OpenAIToolCall,
-} from './openai.types';
+} from './openai.type.interface';
 import {
     ConvertCurrenciesArgs,
     ConvertCurrenciesResult,
     SearchProductsArgs,
     SearchProductsResultItem,
     ToolResult,
-} from './chat-tools.types';
+} from './chat-tools.types.interface';
 
 @Injectable()
 export class ChatService {
