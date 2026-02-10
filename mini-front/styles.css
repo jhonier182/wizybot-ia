@@ -191,6 +191,40 @@ body {
   line-height: 1.5;
 }
 
+/* Contenido Markdown en la respuesta */
+.response-box ul,
+.response-box ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+.response-box li {
+  margin: 0.25rem 0;
+}
+.response-box p {
+  margin: 0.5rem 0;
+}
+.response-box p:first-child {
+  margin-top: 0;
+}
+.response-box a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.response-box a:hover {
+  text-decoration: underline;
+}
+.response-box img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+  border: 1px solid var(--border);
+}
+.response-box strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .response-placeholder {
   color: var(--muted);
   font-style: italic;
